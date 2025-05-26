@@ -20,10 +20,6 @@ class OrgWorld : public emp::World<Organism> {
 private:
   emp::Random &random;
   emp::Ptr<emp::Random> random_ptr;
-  emp::Ptr<emp::DataMonitor<int>> data_node_species_c;
-  emp::Ptr<emp::DataMonitor<int>> data_node_species_d;
-  emp::Ptr<emp::DataMonitor<int>> data_node_empty;
-  emp::Ptr<emp::DataMonitor<int>> data_node_destroyed;
   std::vector<bool>
       destroyed_cells; ///< Track which cells are destroyed habitat
   int grid_width;
@@ -43,99 +39,6 @@ public:
    * @brief Destructor - cleanup resources
    */
   ~OrgWorld() {
-    if (data_node_species_c)
-      data_node_species_c.Delete();
-    if (data_node_species_d)
-      data_node_species_d.Delete();
-    if (data_node_empty)
-      data_node_empty.Delete();
-    if (data_node_destroyed)
-      data_node_destroyed.Delete();
-    random_ptr.Delete();
-  }
-
-  emp::DataMonitor<int> &GetSpeciesCDataNode() {
-    if (!data_node_species_c) {
-      data_node_species_c.New();
-      OnUpdate([this](size_t) {
-        data_node_species_c->Reset();
-        int count = 0;
-        for (size_t i = 0; i < GetSize(); i++) {
-          if (IsOccupied(i) && !IsDestroyed(i) && pop[i]->GetSpecies() == 0) {
-            count++;
-          }
-        }
-        data_node_species_c->AddDatum(count);
-      });
-    }
-    return *data_node_species_c;
-  }
-
-  emp::DataMonitor<int> &GetSpeciesDDataNode() {
-    if (!data_node_species_d) {
-      data_node_species_d.New();
-      OnUpdate([this](size_t) {
-        data_node_species_d->Reset();
-        int count = 0;
-        for (size_t i = 0; i < GetSize(); i++) {
-          if (IsOccupied(i) && !IsDestroyed(i) && pop[i]->GetSpecies() == 1) {
-            count++;
-          }
-        }
-        data_node_species_d->AddDatum(count);
-      });
-    }
-    return *data_node_species_d;
-  }
-
-  emp::DataMonitor<int> &GetEmptyDataNode() {
-    if (!data_node_empty) {
-      data_node_empty.New();
-      OnUpdate([this](size_t) {
-        data_node_empty->Reset();
-        int count = 0;
-        for (size_t i = 0; i < GetSize(); i++) {
-          if (!IsOccupied(i) && !IsDestroyed(i)) {
-            count++;
-          }
-        }
-        data_node_empty->AddDatum(count);
-      });
-    }
-    return *data_node_empty;
-  }
-
-  emp::DataMonitor<int> &GetDestroyedDataNode() {
-    if (!data_node_destroyed) {
-      data_node_destroyed.New();
-      OnUpdate([this](size_t) {
-        data_node_destroyed->Reset();
-        int count = 0;
-        for (size_t i = 0; i < GetSize(); i++) {
-          if (IsDestroyed(i)) {
-            count++;
-          }
-        }
-        data_node_destroyed->AddDatum(count);
-      });
-    }
-    return *data_node_destroyed;
-  }
-
-  emp::DataFile &SetupResultsFile(const std::string &filename) {
-    auto &file = SetupFile(filename);
-    auto &node_c = GetSpeciesCDataNode();
-    auto &node_d = GetSpeciesDDataNode();
-    auto &node_empty = GetEmptyDataNode();
-    auto &node_destroyed = GetDestroyedDataNode();
-
-    file.AddVar(update, "update", "Update");
-    file.AddTotal(node_c, "species_c", "Number of Species C organisms");
-    file.AddTotal(node_d, "species_d", "Number of Species D organisms");
-    file.AddTotal(node_empty, "empty", "Number of empty cells");
-    file.AddTotal(node_destroyed, "destroyed", "Number of destroyed cells");
-    file.PrintHeaderKeys();
-    return file;
   }
 
   /**
@@ -176,6 +79,60 @@ public:
       }
     }
   }
+
+  /**
+ * @brief Destroy habitat cells in a gradient pattern
+ * @param destruction_percentage Average percentage of cells to destroy (0.0 to 1.0)
+ * 
+ * Creates a gradient where the leftmost column has the highest destruction
+ * and rightmost column has the lowest. The destruction probability varies
+ * linearly across columns while maintaining the overall destruction percentage.
+ */
+void DestroyHabitatGradient(double destruction_percentage) {
+    // Reset all cells to not destroyed
+    std::fill(destroyed_cells.begin(), destroyed_cells.end(), false);
+    
+    // Calculate the destruction range
+    // When average is 0.5, we want left at 0.75 and right at 0.25
+    // This gives a spread of 0.5 (0.75 - 0.25)
+    double spread = 0.5;
+    double max_destruction = destruction_percentage + (spread / 2.0);
+    double min_destruction = destruction_percentage - (spread / 2.0);
+    
+    // Ensure we stay within valid bounds [0, 1]
+    if (max_destruction > 1.0) {
+        double excess = max_destruction - 1.0;
+        max_destruction = 1.0;
+        min_destruction = std::max(0.0, min_destruction - excess);
+    }
+    if (min_destruction < 0.0) {
+        double deficit = -min_destruction;
+        min_destruction = 0.0;
+        max_destruction = std::min(1.0, max_destruction + deficit);
+    }
+    
+    // Process each column from left to right
+    for (int col = 0; col < grid_width; col++) {
+        // Calculate destruction probability for this column
+        // Linear interpolation from max (left) to min (right)
+        double column_destruction_prob = max_destruction - 
+            (col * (max_destruction - min_destruction) / (grid_width - 1));
+        
+        // Destroy cells in this column based on the probability
+        for (int row = 0; row < grid_height; row++) {
+            size_t pos = row * grid_width + col;
+            
+            if (random.P(column_destruction_prob)) {
+                destroyed_cells[pos] = true;
+                // Remove any organism at this position
+                if (IsOccupied(pos)) {
+                    RemoveOrganism(pos);
+                }
+          }
+        }
+      }
+  }
+
 
   /**
    * @brief Check if a cell is destroyed habitat

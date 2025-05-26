@@ -116,7 +116,8 @@ class Animator : public emp::web::Animate {
             world.InitializeGrid(NUM_W_BOXES, NUM_H_BOXES);
             
             // Destroy habitat randomly
-            world.DestroyHabitatRandom(destruction_percentage);
+            // world.DestroyHabitatRandom(destruction_percentage);
+            world.DestroyHabitatGradient(destruction_percentage);
             
             // Populate with species D in available habitat
             PopulateWithSpeciesD();
