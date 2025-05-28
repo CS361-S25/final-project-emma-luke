@@ -99,10 +99,11 @@ int main(int argc, char *argv[]) {
     // create a array that gets count using CountCells from world and print
     // coutcells
     emp::array<int, 4> counts = world.CountCells();
+    /*
     std::cout << "Destruction: " << destruction << ", Species C: " << counts[0]
               << ", Species D: " << counts[1] << ", Empty: " << counts[2]
               << ", Destroyed: " << counts[3] << std::endl;
-    
+    */
     // Write same data to CSV
     outputfile << destruction << "," << counts[0] << "," << counts[1] << "," 
                << counts[2] << "," << counts[3] << "\n";
