@@ -185,25 +185,45 @@ void DestroyHabitatGradient(double destruction_percentage) {
     if (!IsOccupied(pos) || IsDestroyed(pos))
       return false;
 
+    // Get the colonizing organism's species
+    int colonizer_species = pop[pos]->GetSpecies();
+
     // Get neighboring positions
     std::vector<size_t> neighbors =
         GetNeighborPositions(pos, grid_width, grid_height);
 
-    // Find available (empty and not destroyed) neighbors
-    std::vector<size_t> available_neighbors;
+    // Find colonizable neighbors based on species
+    std::vector<size_t> colonizable_neighbors;
     for (size_t neighbor_pos : neighbors) {
-      if (!IsOccupied(neighbor_pos) && IsAvailable(neighbor_pos)) {
-        available_neighbors.push_back(neighbor_pos);
+      if (IsDestroyed(neighbor_pos)) continue;
+      
+      if (colonizer_species == 0) {  // Species C (superior competitor)
+        // Can colonize empty cells and cells occupied by species D
+        if (!IsOccupied(neighbor_pos) || 
+            (IsOccupied(neighbor_pos) && pop[neighbor_pos]->GetSpecies() == 1)) {
+          colonizable_neighbors.push_back(neighbor_pos);
+        }
+      } else if (colonizer_species == 1) {  // Species D (superior disperser)
+        // Can only colonize empty cells
+        if (!IsOccupied(neighbor_pos)) {
+          colonizable_neighbors.push_back(neighbor_pos);
+        }
       }
     }
 
-    if (available_neighbors.empty())
+    if (colonizable_neighbors.empty())
       return false;
 
     // Attempt colonization based on rate
     if (random.P(colonization_rate)) {
       size_t target =
-          available_neighbors[random.GetUInt(available_neighbors.size())];
+          colonizable_neighbors[random.GetUInt(colonizable_neighbors.size())];
+      
+      // Remove existing organism if present (competitive displacement)
+      if (IsOccupied(target)) {
+        RemoveOrganism(target);
+      }
+      
       emp::Ptr<Organism> offspring = pop[pos]->CreateOffspring();
       AddOrgAt(offspring, target);
       return true;
