@@ -7,6 +7,7 @@
 #include "ConfigSetup.h"
 #include "Org.h"
 #include "SpeciesD.h"
+#include "SpeciesC.h"
 #include "World.h"
 
 /**
@@ -42,16 +43,48 @@ void PopulateWithSpeciesD(OrgWorld &world, double initial_occupancy,
     world.AddOrgAt(new_organism, available_cells[i]);
   }
 }
-// create a for loop that runs from 0.25 to 0.75, in increments of 0.01
-// within the for loop...
-// create a new world with a new destruction percentage
-// run for 1000 updates
-// count cells at the end of the updates
-// append the results to a csv
-
-// for replication purposes we can have native-baseline, native-basic, and
-// native-ideal for each of the tiers of results so we can easily go back and
-// replicate each step
+/**
+         * @brief Add both species to fill 50% of available habitat evenly
+         */
+        void PopulateWithBothSpecies(OrgWorld &world, double initial_occupancy,
+                          emp::Random &random_generator) {
+            // Clear existing organisms
+            for (size_t i = 0; i < world.GetSize(); i++) {
+                if (world.IsOccupied(i)) {
+                    world.RemoveOrganism(i);
+                }
+            }
+            // Count available cells
+            std::vector<size_t> available_cells;
+            for (size_t i = 0; i < world.GetSize(); i++) {
+                if (world.IsAvailable(i)) {
+                    available_cells.push_back(i);
+                }
+            }
+            
+            // Manually shuffle the available cells
+            for (size_t i = available_cells.size() - 1; i > 0; i--) {
+                size_t j = random_generator.GetUInt(i + 1);
+                std::swap(available_cells[i], available_cells[j]);
+            }
+            
+            // Fill 50% of available cells total (25% each species)
+            int total_to_fill = available_cells.size() / 2;
+            int organisms_per_species = total_to_fill / 2;
+            
+            // Add species C (first half)
+            for (int i = 0; i < organisms_per_species && i < available_cells.size(); i++) {
+                emp::Ptr<SpeciesC> new_organism = new SpeciesC(&random_generator);
+                world.AddOrgAt(new_organism, available_cells[i]);
+            }
+            
+            // Add species D (second half)
+            for (int i = organisms_per_species; 
+                 i < organisms_per_species * 2 && i < available_cells.size(); i++) {
+                emp::Ptr<SpeciesD> new_organism = new SpeciesD(&random_generator);
+                world.AddOrgAt(new_organism, available_cells[i]);
+            }
+        }
 
 int main(int argc, char *argv[]) {
   MyConfigType config;
@@ -79,7 +112,6 @@ int main(int argc, char *argv[]) {
   
   std::ofstream outputfile(filename);
   outputfile << "Destruction,Species_C,Species_D,Empty,Destroyed\n";
-
   // Loop through different destruction percentages
   for (double destruction = 0.25; destruction < 0.76; destruction += 0.01) {
     // Initialize the world grid
@@ -90,20 +122,20 @@ int main(int argc, char *argv[]) {
     // world.DestroyHabitatRandom(destruction);
     world.DestroyHabitatGradient(destruction);
 
-    PopulateWithSpeciesD(world, initial_occupancy, random);
-
+    //PopulateWithSpeciesD(world, initial_occupancy, random);
+    PopulateWithBothSpecies(world, initial_occupancy, random);
     // Run simulation for 1000 updates
     for (int update = 0; update < 1000; update++) {
       world.UpdateEcology();
     }
     // create a array that gets count using CountCells from world and print
     // coutcells
-    emp::array<int, 4> counts = world.CountCells();
-    /*
+    emp::array<int, 4> counts = world.CountCells(); // doesn't like this line for some reason but still works.
+    
     std::cout << "Destruction: " << destruction << ", Species C: " << counts[0]
               << ", Species D: " << counts[1] << ", Empty: " << counts[2]
               << ", Destroyed: " << counts[3] << std::endl;
-    */
+    
     // Write same data to CSV
     outputfile << destruction << "," << counts[0] << "," << counts[1] << "," 
                << counts[2] << "," << counts[3] << "\n";

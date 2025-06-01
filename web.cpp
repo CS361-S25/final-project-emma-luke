@@ -155,6 +155,8 @@ class Animator : public emp::web::Animate {
 
         /**
          * @brief Add both species to fill 50% of available habitat evenly
+         * based off of the paper where it says that "that each
+         * species occupies 0.25 of the remaining available habitat."
          */
         void PopulateWithBothSpecies() {
             // Clear existing organisms
