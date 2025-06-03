@@ -104,13 +104,13 @@ class Animator : public emp::web::Animate {
             doc << GetToggleButton("Toggle");
             doc << " ";
             doc << GetStepButton("Step");
-            doc << " ";
-            emp::web::Button reset_button([this](){
-                // Re-read configuration and reset
-                random_generator.ResetSeed(config.SEED());
-                InitializeSimulation();
-            }, "Reset");
-            doc << reset_button;
+            // doc << " ";
+            // emp::web::Button reset_button([this](){
+            //     // Re-read configuration and reset
+            //     random_generator.ResetSeed(config.SEED());
+            //     InitializeSimulation();
+            // }, "Reset");
+            // doc << reset_button;
             doc << "</div>";
             
             doc << "<br>";
@@ -124,7 +124,7 @@ class Animator : public emp::web::Animate {
             
             // Customize the sliders with appropriate ranges
             config_panel.SetRange("SEED", "1", "100", "1");                     // Seed range 1-100
-            config_panel.SetRange("PERCENT_DESTROYED", "0.25", "0.75", "0.05"); // Destruction 25%-75%
+            config_panel.SetRange("PERCENT_DESTROYED", "0.25", "0.75", "0.01"); // Destruction 25%-75%
             config_panel.SetRange("DESTRUCTION_PATTERN", "0", "1", "1");        // Pattern: 0=Random, 1=Gradient
             
             doc << "<h3>Configuration Parameters</h3>";
