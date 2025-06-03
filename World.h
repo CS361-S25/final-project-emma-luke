@@ -176,14 +176,17 @@ void DestroyHabitatGradient(double destruction_percentage) {
   }
 
   /**
-   * @brief Try to colonize an empty neighboring cell
+   * @brief Try to colonize neighboring cells based on colonization rate
    * @param pos Position of colonizing organism
    * @param colonization_rate Rate of colonization
-   * @return True if colonization was successful
+   * 
+   * Tests colonization independently for each available neighbor.
+   * Species C can colonize empty cells and displace species D.
+   * Species D can only colonize empty cells.
    */
-  bool TryColonize(size_t pos, double colonization_rate) {
+  void TryColonize(size_t pos, double colonization_rate) {
     if (!IsOccupied(pos) || IsDestroyed(pos))
-      return false;
+      return;
 
     // Get the colonizing organism's species
     int colonizer_species = pop[pos]->GetSpecies();
@@ -192,44 +195,37 @@ void DestroyHabitatGradient(double destruction_percentage) {
     std::vector<size_t> neighbors =
         GetNeighborPositions(pos, grid_width, grid_height);
 
-    // Find colonizable neighbors based on species
-    std::vector<size_t> colonizable_neighbors;
+    // Process each neighbor independently
     for (size_t neighbor_pos : neighbors) {
       if (IsDestroyed(neighbor_pos)) continue;
+      
+      bool can_colonize = false;
       
       if (colonizer_species == 0) {  // Species C (superior competitor)
         // Can colonize empty cells and cells occupied by species D
         if (!IsOccupied(neighbor_pos) || 
             (IsOccupied(neighbor_pos) && pop[neighbor_pos]->GetSpecies() == 1)) {
-          colonizable_neighbors.push_back(neighbor_pos);
+          can_colonize = true;
         }
       } else if (colonizer_species == 1) {  // Species D (superior disperser)
         // Can only colonize empty cells
         if (!IsOccupied(neighbor_pos)) {
-          colonizable_neighbors.push_back(neighbor_pos);
+          can_colonize = true;
         }
       }
-    }
-
-    if (colonizable_neighbors.empty())
-      return false;
-
-    // Attempt colonization based on rate
-    if (random.P(colonization_rate)) {
-      size_t target =
-          colonizable_neighbors[random.GetUInt(colonizable_neighbors.size())];
       
-      // Remove existing organism if present (competitive displacement)
-      if (IsOccupied(target)) {
-        RemoveOrganism(target);
+      // If this neighbor can be colonized, test colonization probability
+      if (can_colonize && random.P(colonization_rate)) {
+        // Remove existing organism if present (competitive displacement)
+        if (IsOccupied(neighbor_pos)) {
+          RemoveOrganism(neighbor_pos);
+        }
+        
+        // Create and place offspring
+        emp::Ptr<Organism> offspring = pop[pos]->CreateOffspring();
+        AddOrgAt(offspring, neighbor_pos);
       }
-      
-      emp::Ptr<Organism> offspring = pop[pos]->CreateOffspring();
-      AddOrgAt(offspring, target);
-      return true;
     }
-
-    return false;
   }
 
   /**

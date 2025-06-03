@@ -154,9 +154,10 @@ class Animator : public emp::web::Animate {
         }
 
         /**
-         * @brief Add both species to fill 50% of available habitat evenly
-         * based off of the paper where it says that "that each
-         * species occupies 0.25 of the remaining available habitat."
+         * @brief Add both species to occupy 25% each of available habitat
+         * 
+         * Based on the paper's specification that "each species occupies 0.25 
+         * of the remaining available habitat" at initialization.
          */
         void PopulateWithBothSpecies() {
             // Clear existing organisms
@@ -166,7 +167,7 @@ class Animator : public emp::web::Animate {
                 }
             }
             
-            // Count available cells
+            // Count available cells (non-destroyed habitat)
             std::vector<size_t> available_cells;
             for (size_t i = 0; i < world.GetSize(); i++) {
                 if (world.IsAvailable(i)) {
@@ -174,26 +175,26 @@ class Animator : public emp::web::Animate {
                 }
             }
             
-            // Manually shuffle the available cells
+            // Calculate how many cells each species should occupy
+            // Each species gets 25% of available habitat
+            int cells_per_species = static_cast<int>(available_cells.size() * 0.25);
+            
+            // Manually shuffle the available cells for random distribution
             for (size_t i = available_cells.size() - 1; i > 0; i--) {
                 size_t j = random_generator.GetUInt(i + 1);
                 std::swap(available_cells[i], available_cells[j]);
             }
             
-            // Fill 50% of available cells total (25% each species)
-            int total_to_fill = available_cells.size() / 2;
-            int organisms_per_species = total_to_fill / 2;
-            
-            // Add species C (first half)
-            for (int i = 0; i < organisms_per_species && i < available_cells.size(); i++) {
-                emp::Ptr<SpeciesC> new_organism = new SpeciesC(&random_generator);
+            // Add species C to first 25% of shuffled available cells
+            for (int i = 0; i < cells_per_species && i < available_cells.size(); i++) {
+                SpeciesC* new_organism = new SpeciesC(&random_generator);
                 world.AddOrgAt(new_organism, available_cells[i]);
             }
             
-            // Add species D (second half)
-            for (int i = organisms_per_species; 
-                 i < organisms_per_species * 2 && i < available_cells.size(); i++) {
-                emp::Ptr<SpeciesD> new_organism = new SpeciesD(&random_generator);
+            // Add species D to next 25% of shuffled available cells
+            for (int i = cells_per_species; 
+                i < cells_per_species * 2 && i < available_cells.size(); i++) {
+                SpeciesD* new_organism = new SpeciesD(&random_generator);
                 world.AddOrgAt(new_organism, available_cells[i]);
             }
         }
@@ -264,6 +265,6 @@ Animator animator;
  */
 int main() {
     // Initialize the animator with the first frame
-    animator.Step();
+    // animator.Step();
     return 0;
 }
