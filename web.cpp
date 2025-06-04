@@ -16,6 +16,7 @@
 #include "World.h"
 
 emp::web::Document doc{"target"};
+emp::web::Document settings("settings");
 MyConfigType config;
 
 /**
@@ -93,9 +94,14 @@ private:
                           "0.01"); // Destruction 25%-75%
     config_panel.SetRange("DESTRUCTION_PATTERN", "0", "1",
                           "1"); // Pattern: 0=Random, 1=Gradient
-
-    doc << "<h3>Configuration Parameters</h3>";
-    doc << config_panel;
+    
+    settings << "<h3>How to interact with the simulation:</h3>";
+    settings << "<ul>";
+    settings << "<li>Use the sliders to adjust parameters!</li>";
+    settings << "<li>Seed give random start</li>";
+    settings << "<li>Destruction pattern: 0 = Random, 1 = Gradient </li>";
+    settings << "</ul>";
+    settings << config_panel;
   }
 
   /**

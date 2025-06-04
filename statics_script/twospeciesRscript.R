@@ -26,11 +26,15 @@ data_long <- pivot_longer(data_combined,
 
 # Plot side-by-side with facet
 ggplot(data_long, aes(x = Destruction, y = Count, color = Cell_Type)) +
-    geom_line(size = 1.2) +
-    facet_wrap(~Destruction_Type) +
-    labs(
-        title = "Cell Occupancy Under Different Habitat Destruction Patterns",
-        x = "Proportion of Cells Habitable",
-        y = "Average Number of Cells"
-    ) +
-    theme_minimal()
+  geom_line(size = 1.2) +
+  facet_wrap(~Destruction_Type) +
+  labs(title = "Cell Occupancy Under Different Habitat Destruction Patterns",
+       x = "Proportion of Cells Habitable",
+       y = "Average Number of Cells") +
+  scale_color_manual(values = c(
+    "Species_C" = "violet",
+    "Species_D" = "darkturquoise",
+    "Empty" = "salmon"
+  )) +
+  theme_minimal()
+
