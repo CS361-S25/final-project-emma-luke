@@ -24,6 +24,12 @@ private:
       destroyed_cells; ///< Track which cells are destroyed habitat
   int grid_width;
   int grid_height;
+  
+  // New members for incremental destruction
+  emp::vector<size_t> cells_to_destroy; ///< Queue of cells scheduled for destruction
+  int destruction_rounds_remaining; ///< Rounds left for incremental destruction
+  int cells_per_round; ///< Number of cells to destroy each round
+  int extra_cells_first_rounds; ///< Extra cells to destroy in first rounds for remainder
 
 public:
   /**
@@ -133,6 +139,129 @@ void DestroyHabitatGradient(double destruction_percentage) {
       }
   }
 
+  /**
+   * @brief Initialize incremental habitat destruction
+   * @param destruction_percentage Percentage of cells to destroy (0.0 to 1.0)
+   * @param rounds Number of rounds to spread destruction over (0 = immediate)
+   * @param pattern Destruction pattern: 0=Random, 1=Gradient
+   */
+  void InitializeIncrementalDestruction(double destruction_percentage, int rounds, int pattern) {
+    if (rounds == 0) {
+      // Immediate destruction using original methods
+      if (pattern == 0) {
+        DestroyHabitatRandom(destruction_percentage);
+      } else {
+        DestroyHabitatGradient(destruction_percentage);
+      }
+      return;
+    }
+    
+    // Reset destruction state
+    std::fill(destroyed_cells.begin(), destroyed_cells.end(), false);
+    cells_to_destroy.clear();
+    
+    int total_cells = grid_width * grid_height;
+    int total_to_destroy = static_cast<int>(total_cells * destruction_percentage);
+    
+    // Determine which cells to destroy based on pattern
+    if (pattern == 0) {
+      // Random pattern - create random order
+      emp::vector<size_t> all_cells;
+      for (size_t i = 0; i < total_cells; i++) {
+        all_cells.push_back(i);
+      }
+      emp::Shuffle(random, all_cells);
+      
+      // Take first total_to_destroy cells
+      for (int i = 0; i < total_to_destroy; i++) {
+        cells_to_destroy.push_back(all_cells[i]);
+      }
+    } else {
+      // Gradient pattern - calculate destruction probability per column
+      double spread = 0.5;
+      double max_destruction = destruction_percentage + (spread / 2.0);
+      double min_destruction = destruction_percentage - (spread / 2.0);
+      
+      // Ensure bounds
+      if (max_destruction > 1.0) {
+        double excess = max_destruction - 1.0;
+        max_destruction = 1.0;
+        min_destruction = std::max(0.0, min_destruction - excess);
+      }
+      if (min_destruction < 0.0) {
+        double deficit = -min_destruction;
+        min_destruction = 0.0;
+        max_destruction = std::min(1.0, max_destruction + deficit);
+      }
+      
+      // Select cells based on gradient probabilities
+      for (int col = 0; col < grid_width; col++) {
+        double column_destruction_prob = max_destruction - 
+            (col * (max_destruction - min_destruction) / (grid_width - 1));
+        
+        for (int row = 0; row < grid_height; row++) {
+          size_t pos = row * grid_width + col;
+          if (random.P(column_destruction_prob)) {
+            cells_to_destroy.push_back(pos);
+          }
+        }
+      }
+      
+      // Shuffle to randomize destruction order within the gradient pattern
+      emp::Shuffle(random, cells_to_destroy);
+    }
+    
+    // Calculate cells per round
+    destruction_rounds_remaining = rounds;
+    cells_per_round = cells_to_destroy.size() / rounds;
+    extra_cells_first_rounds = cells_to_destroy.size() % rounds;
+  }
+  
+  /**
+   * @brief Process one round of incremental destruction
+   * @return Number of cells destroyed this round
+   */
+  int ProcessIncrementalDestruction() {
+    if (destruction_rounds_remaining <= 0 || cells_to_destroy.empty()) {
+      return 0;
+    }
+    
+    // Calculate how many cells to destroy this round
+    int cells_this_round = cells_per_round;
+    if (extra_cells_first_rounds > 0) {
+      cells_this_round++;
+      extra_cells_first_rounds--;
+    }
+    
+    int destroyed_count = 0;
+    
+    // Destroy cells from the front of the queue
+    while (destroyed_count < cells_this_round && !cells_to_destroy.empty()) {
+      size_t pos = cells_to_destroy.front();
+      cells_to_destroy.erase(cells_to_destroy.begin());
+      
+      // Destroy the cell
+      destroyed_cells[pos] = true;
+      
+      // Kill any organism at this position
+      if (IsOccupied(pos)) {
+        RemoveOrganism(pos);
+      }
+      
+      destroyed_count++;
+    }
+    
+    destruction_rounds_remaining--;
+    return destroyed_count;
+  }
+  
+  /**
+   * @brief Check if incremental destruction is active
+   * @return True if there are still rounds of destruction remaining
+   */
+  bool IsIncrementalDestructionActive() const {
+    return destruction_rounds_remaining > 0;
+  }
 
   /**
    * @brief Check if a cell is destroyed habitat
@@ -164,8 +293,11 @@ void DestroyHabitatGradient(double destruction_percentage) {
       }
     }
 
-    // Shuffle for random processing order
-    emp::Shuffle(random, occupied_positions);
+    // Manually shuffle for random processing order
+    for (size_t i = occupied_positions.size() - 1; i > 0; i--) {
+      size_t j = random.GetUInt(i + 1);
+      std::swap(occupied_positions[i], occupied_positions[j]);
+    }
 
     // Process organisms for extinction and colonization
     for (size_t pos : occupied_positions) {

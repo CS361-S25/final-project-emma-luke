@@ -49,6 +49,12 @@ private:
       "blue"; ///< Color for species C (superior competitor)
   const std::string species_d_color =
       "orange"; ///< Color for species D (superior disperser)
+      
+  // Track if we've initialized incremental destruction
+  bool destruction_initialized = false;
+  
+  // Round counter
+  int round_count = 0;
 
 public:
   /**
@@ -65,9 +71,18 @@ public:
    */
   void DoFrame() override {
     canvas.Clear();
+    
+    // Process incremental destruction if active
+    if (destruction_initialized && world->IsIncrementalDestructionActive()) {
+      world->ProcessIncrementalDestruction();
+    }
+    
     world->UpdateEcology();
     DrawWorld();
     UpdateStats();
+    
+    // Increment round counter
+    round_count++;
   }
 
 private:
@@ -94,12 +109,15 @@ private:
                           "0.01"); // Destruction 25%-75%
     config_panel.SetRange("DESTRUCTION_PATTERN", "0", "1",
                           "1"); // Pattern: 0=Random, 1=Gradient
+    config_panel.SetRange("DESTRUCTION_ROUNDS", "0", "100",
+                          "1"); // Destruction rounds 0-100
     
     settings << "<h3>How to interact with the simulation:</h3>";
     settings << "<ul>";
     settings << "<li>Use the sliders to adjust parameters!</li>";
     settings << "<li>Seed give random start</li>";
     settings << "<li>Destruction pattern: 0 = Random, 1 = Gradient </li>";
+    settings << "<li>Destruction rounds: 0 = Immediate, 1-100 = Incremental over rounds</li>";
     settings << "</ul>";
     settings << config_panel;
   }
@@ -133,13 +151,6 @@ private:
     doc << GetToggleButton("Toggle");
     doc << " ";
     doc << GetStepButton("Step");
-    // doc << " ";
-    // emp::web::Button reset_button([this](){
-    //     // Re-read configuration and reset
-    //     random_generator.ResetSeed(config.SEED());
-    //     InitializeSimulation();
-    // }, "Reset");
-    // doc << reset_button;
     doc << "</div>";
 
     doc << "<br>";
@@ -156,11 +167,22 @@ private:
     // Initialize grid
     world->InitializeGrid(NUM_W_BOXES, NUM_H_BOXES);
 
-    // Destroy habitat based on selected pattern using config value
-    if (config.DESTRUCTION_PATTERN() == 0) {
-      world->DestroyHabitatRandom(config.PERCENT_DESTROYED());
+    // Initialize destruction based on selected pattern and rounds
+    if (config.DESTRUCTION_ROUNDS() > 0) {
+      // Set up incremental destruction
+      world->InitializeIncrementalDestruction(
+        config.PERCENT_DESTROYED(), 
+        config.DESTRUCTION_ROUNDS(),
+        config.DESTRUCTION_PATTERN()
+      );
+      destruction_initialized = true;
     } else {
-      world->DestroyHabitatGradient(config.PERCENT_DESTROYED());
+      // Immediate destruction using original methods
+      if (config.DESTRUCTION_PATTERN() == 0) {
+        world->DestroyHabitatRandom(config.PERCENT_DESTROYED());
+      } else {
+        world->DestroyHabitatGradient(config.PERCENT_DESTROYED());
+      }
     }
 
     // Populate with both species
@@ -265,6 +287,7 @@ private:
   void UpdateStats() {
     auto counts = world->CountCells();
     stats_div.Clear();
+    stats_div << "<b>Round:</b> " << round_count << " | ";
     stats_div << "<b>Cell Counts:</b> ";
     stats_div << "Species C: " << counts[0] << " | ";
     stats_div << "Species D: " << counts[1] << " | ";
@@ -286,6 +309,8 @@ Animator animator;
  */
 int main() {
   // Initialize the animator with the first frame
-  animator.Step();
+  // keep this commented out to avoid immediate animation start
+  // allows user to see the initial state before starting animation
+  // animator.Step();
   return 0;
 }

@@ -118,17 +118,38 @@ int main(int argc, char *argv[]) {
     // Initialize the world grid
     world.InitializeGrid(50, 50);
 
-    // Set destruction percentage
-    // Here we can change the destruction type
-    world.DestroyHabitatRandom(destruction);
-    //world.DestroyHabitatGradient(destruction);
-
-    //PopulateWithSpeciesD(world, initial_occupancy, random);
-    PopulateWithBothSpecies(world, initial_occupancy, random);
-    // Run simulation for 1000 updates
-    for (int update = 0; update < 1000; update++) {
-      world.UpdateEcology();
+    // Set destruction
+    if (config.DESTRUCTION_ROUNDS() > 0) {
+      // Initialize incremental destruction
+      world.InitializeIncrementalDestruction(destruction, config.DESTRUCTION_ROUNDS(), config.DESTRUCTION_PATTERN());
+      
+      // Populate with species before destruction starts
+      PopulateWithBothSpecies(world, initial_occupancy, random);
+      
+      // Process destruction and ecology updates together
+      for (int update = 0; update < 1000; update++) {
+        // Process incremental destruction if active
+        if (world.IsIncrementalDestructionActive()) {
+          world.ProcessIncrementalDestruction();
+        }
+        world.UpdateEcology();
+      }
+    } else {
+      // Original immediate destruction
+      if (config.DESTRUCTION_PATTERN() == 0) {
+        world.DestroyHabitatRandom(destruction);
+      } else {
+        world.DestroyHabitatGradient(destruction);
+      }
+      
+      PopulateWithBothSpecies(world, initial_occupancy, random);
+      
+      // Run simulation for 1000 updates
+      for (int update = 0; update < 1000; update++) {
+        world.UpdateEcology();
+      }
     }
+    
     // create a array that gets count using CountCells from world and print
     // coutcells
     emp::array<int, 4> counts = world.CountCells(); // doesn't like this line for some reason but still works.
