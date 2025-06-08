@@ -117,17 +117,22 @@ private:
     settings << "<li>Use the sliders to adjust parameters!</li>";
     settings << "<li>Seed give random start</li>";
     settings << "<li>Destruction pattern: 0 = Random, 1 = Gradient </li>";
-    settings << "<li>Destruction rounds: 0 = Immediate, 1-100 = Incremental over rounds</li>";
+    settings << "<li>(<em>Expansion</em>) Destruction rounds: 0 = Immediate, 1-100 = Incremental over rounds</li>";
     settings << "</ul>";
     settings << config_panel;
+    settings << "<br>";
+    settings << "<br>";
+    settings << "<br>";
+    settings << stats_div;
+    settings << "<br>";
   }
 
   /**
    * @brief Set up the web interface with instructions and controls
    */
   void SetupInterface() {
-    doc << "<h2>Habitat Destruction Pattern on Species Persistence: "
-           "Two-Species Competition</h2>";
+    doc << "<h2>Habitat Destruction Pattern</h2>"
+           "<h3>on Species Persistence</h3>";
 
     doc << "<p>This simulation demonstrates competition between two "
            "species:</p>";
@@ -155,8 +160,6 @@ private:
 
     doc << "<br>";
     doc << canvas;
-    doc << "<br>";
-    doc << stats_div;
     doc << "<br>";
   }
 

@@ -111,17 +111,68 @@ int main(int argc, char *argv[]) {
   }
   test_file.close();
   
+  // //For expriment results
+  // std::ofstream outputfile(filename);
+  // outputfile << "Destruction,Species_C,Species_D,Empty,Destroyed\n";
+  // // Loop through different destruction percentages
+  // for (double destruction = 0.25; destruction < 0.76; destruction += 0.01) {
+  //   // Initialize the world grid
+  //   world.InitializeGrid(50, 50);
+
+  //   // Set destruction
+  //   if (config.DESTRUCTION_ROUNDS() > 0) {
+  //     // Initialize incremental destruction
+  //     world.InitializeIncrementalDestruction(destruction, config.DESTRUCTION_ROUNDS(), config.DESTRUCTION_PATTERN());
+      
+  //     // Populate with species before destruction starts
+  //     PopulateWithBothSpecies(world, initial_occupancy, random);
+      
+  //     // Process destruction and ecology updates together
+  //     for (int update = 0; update < 1000; update++) {
+  //       // Process incremental destruction if active
+  //       if (world.IsIncrementalDestructionActive()) {
+  //         world.ProcessIncrementalDestruction();
+  //       }
+  //       world.UpdateEcology();
+  //     }
+  //   } else {
+  //     // Original immediate destruction
+  //     if (config.DESTRUCTION_PATTERN() == 0) {
+  //       world.DestroyHabitatRandom(destruction);
+  //     } else {
+  //       world.DestroyHabitatGradient(destruction);
+  //     }
+      
+  //     PopulateWithBothSpecies(world, initial_occupancy, random);
+      
+  //     // Run simulation for 1000 updates
+  //     for (int update = 0; update < 1000; update++) {
+  //       world.UpdateEcology();
+  //     }
+  //   }
+    
+  //   // create a array that gets count using CountCells from world and print
+  //   // coutcells
+  //   emp::array<int, 4> counts = world.CountCells(); // doesn't like this line for some reason but still works.
+    
+  //   std::cout << "Destruction: " << destruction << ", Species C: " << counts[0]
+  //             << ", Species D: " << counts[1] << ", Empty: " << counts[2]
+  //             << ", Destroyed: " << counts[3] << std::endl;
+    
+  //   // Write same data to CSV
+  //   outputfile << destruction << "," << counts[0] << "," << counts[1] << "," 
+  //              << counts[2] << "," << counts[3] << "\n";
+  // }
+  
+  //For expriment results
   std::ofstream outputfile(filename);
-  outputfile << "Destruction,Species_C,Species_D,Empty,Destroyed\n";
+  outputfile << "Rounds,Species_C,Species_D,Empty,Destroyed\n";
   // Loop through different destruction percentages
-  for (double destruction = 0.25; destruction < 0.76; destruction += 0.01) {
+  for (int rounds = 0; rounds <= 100; rounds++) {
     // Initialize the world grid
     world.InitializeGrid(50, 50);
-
-    // Set destruction
-    if (config.DESTRUCTION_ROUNDS() > 0) {
       // Initialize incremental destruction
-      world.InitializeIncrementalDestruction(destruction, config.DESTRUCTION_ROUNDS(), config.DESTRUCTION_PATTERN());
+      world.InitializeIncrementalDestruction(0.5, rounds, 0);
       
       // Populate with species before destruction starts
       PopulateWithBothSpecies(world, initial_occupancy, random);
@@ -134,32 +185,17 @@ int main(int argc, char *argv[]) {
         }
         world.UpdateEcology();
       }
-    } else {
-      // Original immediate destruction
-      if (config.DESTRUCTION_PATTERN() == 0) {
-        world.DestroyHabitatRandom(destruction);
-      } else {
-        world.DestroyHabitatGradient(destruction);
-      }
-      
-      PopulateWithBothSpecies(world, initial_occupancy, random);
-      
-      // Run simulation for 1000 updates
-      for (int update = 0; update < 1000; update++) {
-        world.UpdateEcology();
-      }
-    }
     
     // create a array that gets count using CountCells from world and print
     // coutcells
     emp::array<int, 4> counts = world.CountCells(); // doesn't like this line for some reason but still works.
     
-    std::cout << "Destruction: " << destruction << ", Species C: " << counts[0]
+    std::cout << "Rounds: " << rounds << ", Species C: " << counts[0]
               << ", Species D: " << counts[1] << ", Empty: " << counts[2]
               << ", Destroyed: " << counts[3] << std::endl;
     
     // Write same data to CSV
-    outputfile << destruction << "," << counts[0] << "," << counts[1] << "," 
+    outputfile << rounds << "," << counts[0] << "," << counts[1] << "," 
                << counts[2] << "," << counts[3] << "\n";
   }
   
